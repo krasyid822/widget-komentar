@@ -349,12 +349,15 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             word-break: break-word;
         }
 
-        /* Tanggal & Jam 2 baris otomatis */
+        /* Tanggal & Jam responsif sesuai ruang horizontal */
         .komentar-waktu-box {
             display: inline-flex;
-            flex-direction: column;
-            line-height: 1.1;
-            font-size: 0.68rem;
+            flex-wrap: wrap;
+            align-items: center;
+            row-gap: 0.1rem;
+            column-gap: 0.25rem;
+            line-height: 1.25;
+            font-size: 0.72rem;
             color: var(--text-muted);
             opacity: 0.85;
         }
