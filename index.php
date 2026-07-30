@@ -265,20 +265,30 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
         .komentar-branch {
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
             position: relative;
         }
 
         /* Sub-komentar (Balasan menjorok / indented tree) */
         .komentar-children {
-            margin-left: 0.9rem;
-            padding-left: 0.75rem;
+            margin-left: 1.1rem;
+            padding-left: 1rem;
             border-left: 2px solid var(--tree-line);
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
+            gap: 0.65rem;
             margin-top: 0.5rem;
             position: relative;
+        }
+
+        /* Garis siku vertikal-horizontal penghubung langsung ke child */
+        .komentar-children > .komentar-branch::before {
+            content: "";
+            position: absolute;
+            top: 1.25rem;
+            left: -1rem;
+            width: 0.95rem;
+            height: 2px;
+            background-color: var(--tree-line);
         }
 
         .komentar-item {
@@ -515,8 +525,12 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
                 padding: 1rem;
             }
             .komentar-children {
-                margin-left: 0.5rem;
-                padding-left: 0.5rem;
+                margin-left: 0.65rem;
+                padding-left: 0.6rem;
+            }
+            .komentar-children > .komentar-branch::before {
+                left: -0.6rem;
+                width: 0.55rem;
             }
             .komentar-item {
                 padding: 0.65rem 0.75rem;
