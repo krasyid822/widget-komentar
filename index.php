@@ -46,25 +46,34 @@ $komentar = loadKomentar($dataFile);
 $pesan = '';
 $tipepesan = '';
 
+// --- Helper fungsi untuk menghapus komentar dan anak-anaknya secara rekursif ---
+function deleteKomentarRecursive(array &$list, string $targetId, string $userToken): bool {
+    $found = false;
+    foreach ($list as $idx => $k) {
+        if (isset($k['id']) && $k['id'] === $targetId) {
+            if (isset($k['user_token']) && $k['user_token'] === $userToken) {
+                // Hapus komentar beserta balasan-balasannya
+                array_splice($list, $idx, 1);
+                // Juga hapus segenap komentar yang memiliki parent_id = targetId
+                $list = array_values(array_filter($list, function($item) use ($targetId) {
+                    return ($item['parent_id'] ?? null) !== $targetId;
+                }));
+                return true;
+            }
+            return false;
+        }
+    }
+    return false;
+}
+
 // --- POST: Hapus komentar ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
     $deleteId = $_POST['id'] ?? '';
     $userToken = $_POST['user_token'] ?? '';
 
     if (!empty($deleteId) && !empty($userToken)) {
-        $foundIndex = null;
-        foreach ($komentar as $idx => $k) {
-            if (isset($k['id']) && $k['id'] === $deleteId) {
-                // Periksa apakah user_token komentar cocok dengan browser penyerah
-                if (isset($k['user_token']) && $k['user_token'] === $userToken) {
-                    $foundIndex = $idx;
-                }
-                break;
-            }
-        }
-
-        if ($foundIndex !== null) {
-            array_splice($komentar, $foundIndex, 1);
+        $deleted = deleteKomentarRecursive($komentar, $deleteId, $userToken);
+        if ($deleted) {
             saveKomentar($dataFile, $komentar);
             $pesan = 'Komentar berhasil dihapus.';
             $tipepesan = 'sukses';
@@ -83,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST['action'] === 'add')) {
     $nama = trim(htmlspecialchars($_POST['nama'] ?? '', ENT_QUOTES, 'UTF-8'));
     $isi  = trim(htmlspecialchars($_POST['komentar'] ?? '', ENT_QUOTES, 'UTF-8'));
+    $parentId = trim($_POST['parent_id'] ?? '');
     $userToken = trim($_POST['user_token'] ?? '');
 
     if ($nama === '' || $isi === '') {
@@ -91,6 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
     } else {
         $entry = [
             'id'         => uniqid('k_', true),
+            'parent_id'  => $parentId !== '' ? $parentId : null,
             'nama'       => $nama,
             'isi'        => $isi,
             'waktu'      => date('Y-m-d H:i:s'),
@@ -109,6 +120,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
     }
 }
 
+// Organisasi Tree Komentar (Hierarki Balasan)
+function buildTree(array $items, $parentId = null): array {
+    $branch = [];
+    foreach ($items as $item) {
+        $itemParent = $item['parent_id'] ?? null;
+        if ($itemParent === $parentId) {
+            $children = buildTree($items, $item['id']);
+            if ($children) {
+                $item['children'] = $children;
+            } else {
+                $item['children'] = [];
+            }
+            $branch[] = $item;
+        }
+    }
+    return $branch;
+}
+
+$treeKomentar = buildTree($komentar);
 $jumlah = count($komentar);
 $roomLabel = $room !== 'default' ? ' — ' . htmlspecialchars($room) : '';
 
@@ -146,6 +176,7 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             --error: #ff6b6b;
             --success: #4ecb71;
             --radius: 10px;
+            --tree-line: #3a3f52;
         }
 
         body {
@@ -194,19 +225,38 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             padding: 1.25rem 1.5rem;
         }
 
-        /* --- Komentar list --- */
-        .komentar-list {
+        /* --- Komentar List & Tree Indent (Garis Level) --- */
+        .komentar-tree {
             display: flex;
             flex-direction: column;
             gap: 0.85rem;
             margin-bottom: 1.5rem;
         }
 
+        .komentar-branch {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            position: relative;
+        }
+
+        /* Sub-komentar (Balasan menjorok / indented tree) */
+        .komentar-children {
+            margin-left: 1.2rem;
+            padding-left: 1rem;
+            border-left: 2px solid var(--tree-line);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+            position: relative;
+        }
+
         .komentar-item {
             background: var(--surface2);
             border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 0.9rem 1rem;
+            padding: 0.85rem 1rem;
             animation: fadeIn 0.25s ease;
             position: relative;
         }
@@ -253,7 +303,7 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             font-size: 0.75rem;
             font-weight: 500;
             cursor: pointer;
-            padding: 0.1rem 0.3rem;
+            padding: 0.1rem 0.35rem;
             border-radius: 4px;
             transition: color 0.2s, background 0.2s;
         }
@@ -280,6 +330,29 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             font-size: 0.875rem;
             margin-bottom: 1.5rem;
             padding: 0.5rem 0;
+        }
+
+        /* --- Indicator Mode Balas --- */
+        .reply-target-box {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(77, 166, 255, 0.1);
+            border: 1px dashed var(--accent);
+            border-radius: 6px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.78rem;
+            color: var(--accent);
+            margin-bottom: 0.75rem;
+        }
+
+        .reply-target-box button {
+            background: none;
+            border: none;
+            color: var(--error);
+            font-size: 0.75rem;
+            cursor: pointer;
+            font-weight: 600;
         }
 
         /* --- Pesan notif --- */
@@ -417,34 +490,51 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             <div class="notif <?= htmlspecialchars($tipepesan) ?>"><?= $pesan ?></div>
         <?php endif; ?>
 
+        <!-- Render Komentar Rekursif dengan Indentasi -->
+        <?php
+        function renderTree(array $nodes, string $room) {
+            foreach ($nodes as $k) {
+                ?>
+                <div class="komentar-branch">
+                    <div class="komentar-item" id="k-<?= htmlspecialchars($k['id'] ?? '') ?>">
+                        <div class="komentar-meta">
+                            <div class="komentar-meta-left">
+                                <span class="komentar-nama"><?= htmlspecialchars($k['nama']) ?></span>
+                                <span class="komentar-waktu">· <?= htmlspecialchars($k['waktu']) ?></span>
+                            </div>
+                            <div class="komentar-actions">
+                                <button type="button" class="btn-action btn-reply" onclick="setReplyTo('<?= htmlspecialchars($k['id']) ?>', '<?= addslashes(htmlspecialchars($k['nama'])) ?>')">Balas</button>
+                                <?php if (isset($k['id'])): ?>
+                                    <form method="POST" action="<?= $room !== 'default' ? '?room=' . urlencode($room) : '' ?>" style="display:inline;" onsubmit="return konfirmasiHapus(this)">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="id" value="<?= htmlspecialchars($k['id']) ?>">
+                                        <input type="hidden" name="user_token" class="delete-user-token" value="">
+                                        <button type="submit" class="btn-action btn-delete" data-token="<?= htmlspecialchars($k['user_token'] ?? '') ?>" style="display:none;">Hapus</button>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="komentar-isi"><?= htmlspecialchars($k['isi']) ?></div>
+                    </div>
+
+                    <?php if (!empty($k['children'])): ?>
+                        <div class="komentar-children">
+                            <?php renderTree($k['children'], $room); ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php
+            }
+        }
+        ?>
+
         <!-- Daftar komentar -->
         <div id="komentar-list">
             <?php if ($jumlah === 0): ?>
                 <p class="empty-state">Belum ada komentar. Jadilah yang pertama!</p>
             <?php else: ?>
-                <div class="komentar-list">
-                    <?php foreach (array_reverse($komentar) as $k): ?>
-                        <div class="komentar-item" data-id="<?= htmlspecialchars($k['id'] ?? '') ?>">
-                            <div class="komentar-meta">
-                                <div class="komentar-meta-left">
-                                    <span class="komentar-nama"><?= $k['nama'] ?></span>
-                                    <span class="komentar-waktu">· <?= $k['waktu'] ?></span>
-                                </div>
-                                <div class="komentar-actions">
-                                    <button type="button" class="btn-action btn-reply" onclick="balasKomentar('<?= addslashes(htmlspecialchars($k['nama'])) ?>')">Balas</button>
-                                    <?php if (isset($k['id'])): ?>
-                                        <form method="POST" action="<?= $room !== 'default' ? '?room=' . urlencode($room) : '' ?>" style="display:inline;" onsubmit="return konfirmasiHapus(this)">
-                                            <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="id" value="<?= htmlspecialchars($k['id']) ?>">
-                                            <input type="hidden" name="user_token" class="delete-user-token" value="">
-                                            <button type="submit" class="btn-action btn-delete" data-token="<?= htmlspecialchars($k['user_token'] ?? '') ?>" style="display:none;">Hapus</button>
-                                        </form>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                            <div class="komentar-isi"><?= $k['isi'] ?></div>
-                        </div>
-                    <?php endforeach; ?>
+                <div class="komentar-tree">
+                    <?php renderTree($treeKomentar, $room); ?>
                 </div>
             <?php endif; ?>
         </div>
@@ -453,6 +543,13 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
         <form method="POST" id="form-komentar" action="<?= $room !== 'default' ? '?room=' . urlencode($room) : '' ?>">
             <input type="hidden" name="action" value="add">
             <input type="hidden" name="user_token" id="form-user-token" value="">
+            <input type="hidden" name="parent_id" id="form-parent-id" value="">
+
+            <div class="reply-target-box" id="reply-target-box">
+                <span>Membalas <strong id="reply-target-nama"></strong></span>
+                <button type="button" onclick="batalBalas()">Batal Balas</button>
+            </div>
+
             <div class="form-group">
                 <label for="nama">Nama</label>
                 <input type="text" id="nama" name="nama" placeholder="Nama kamu..." maxlength="80" required
@@ -462,7 +559,7 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
                 <label for="komentar">Komentar</label>
                 <textarea id="komentar" name="komentar" placeholder="Tulis komentar..." maxlength="1000" required><?= htmlspecialchars($_POST['komentar'] ?? '') ?></textarea>
             </div>
-            <button type="submit">Kirim Komentar</button>
+            <button type="submit" id="btn-submit">Kirim Komentar</button>
         </form>
 
         <?php if ($room !== 'default'): ?>
@@ -507,20 +604,27 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
         }
     });
 
-    // Balas Komentar
-    function balasKomentar(nama) {
+    // Set Mode Balas (Nested Tree)
+    function setReplyTo(id, nama) {
+        document.getElementById('form-parent-id').value = id;
+        document.getElementById('reply-target-nama').innerText = nama;
+        document.getElementById('reply-target-box').style.display = 'flex';
+        document.getElementById('btn-submit').innerText = 'Kirim Balasan';
+
         const textarea = document.getElementById('komentar');
-        const mention = '@' + nama + ' ';
-        if (!textarea.value.includes(mention)) {
-            textarea.value = mention + textarea.value;
-        }
         textarea.focus();
-        textarea.scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('form-komentar').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function batalBalas() {
+        document.getElementById('form-parent-id').value = '';
+        document.getElementById('reply-target-box').style.display = 'none';
+        document.getElementById('btn-submit').innerText = 'Kirim Komentar';
     }
 
     // Konfirmasi Hapus & Set User Token
     function konfirmasiHapus(form) {
-        if (confirm('Yakin ingin menghapus komentar ini?')) {
+        if (confirm('Yakin ingin menghapus komentar ini beserta alasannya?')) {
             form.querySelector('.delete-user-token').value = userToken;
             return true;
         }
