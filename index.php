@@ -263,8 +263,8 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
 
         /* Sub-komentar (Balasan menjorok / indented tree) */
         .komentar-children {
-            margin-left: 1.2rem;
-            padding-left: 1rem;
+            margin-left: 0.9rem;
+            padding-left: 0.75rem;
             border-left: 2px solid var(--tree-line);
             display: flex;
             flex-direction: column;
@@ -277,9 +277,11 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             background: var(--surface2);
             border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 0.85rem 1rem;
+            padding: 0.75rem 0.85rem;
             animation: fadeIn 0.25s ease;
             position: relative;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         @keyframes fadeIn {
@@ -289,44 +291,73 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
 
         .komentar-meta {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: space-between;
+            gap: 0.5rem;
             margin-bottom: 0.4rem;
+            flex-wrap: wrap;
         }
 
         .komentar-meta-left {
             display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            align-items: baseline;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            min-width: 0;
         }
 
         .komentar-nama {
             font-weight: 600;
-            font-size: 0.875rem;
+            font-size: 0.85rem;
             color: var(--accent);
+            word-break: break-word;
         }
 
-        .komentar-waktu {
-            font-size: 0.75rem;
+        /* Tanggal & Jam 2 baris otomatis */
+        .komentar-waktu-box {
+            display: inline-flex;
+            flex-direction: column;
+            line-height: 1.1;
+            font-size: 0.68rem;
             color: var(--text-muted);
+            opacity: 0.85;
+        }
+
+        .komentar-tgl, .komentar-jam {
+            white-space: nowrap;
         }
 
         .komentar-actions {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 0.6rem;
+            gap: 0.3rem;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
+        .form-delete-inline {
+            display: inline-flex;
+            margin: 0;
+            padding: 0;
         }
 
         .btn-action {
             background: none;
             border: none;
+            box-shadow: none;
             color: var(--text-muted);
             font-size: 0.75rem;
             font-weight: 500;
             cursor: pointer;
-            padding: 0.1rem 0.35rem;
+            padding: 0.15rem 0.4rem;
             border-radius: 4px;
             transition: color 0.2s, background 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-action.btn-delete {
+            color: var(--error);
+            opacity: 0.85;
         }
 
         .btn-action:hover {
@@ -477,8 +508,22 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             transition: width 0.4s ease, background 0.4s ease;
         }
 
-        .storage-bar-fill.warn  { background: #f5a623; }
-        .storage-bar-fill.full  { background: var(--error); }
+        /* --- Mobile Responsive Adjustment --- */
+        @media (max-width: 480px) {
+            body {
+                padding: 0.5rem;
+            }
+            .widget-header, .widget-body {
+                padding: 1rem;
+            }
+            .komentar-children {
+                margin-left: 0.5rem;
+                padding-left: 0.5rem;
+            }
+            .komentar-item {
+                padding: 0.65rem 0.75rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -505,12 +550,23 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
                         <div class="komentar-meta">
                             <div class="komentar-meta-left">
                                 <span class="komentar-nama"><?= htmlspecialchars($k['nama']) ?></span>
-                                <span class="komentar-waktu">· <?= htmlspecialchars($k['waktu']) ?></span>
+                                <?php
+                                    $waktuRaw = $k['waktu'] ?? '';
+                                    $parts = explode(' ', $waktuRaw, 2);
+                                    $tgl = $parts[0] ?? '';
+                                    $jam = $parts[1] ?? '';
+                                ?>
+                                <div class="komentar-waktu-box">
+                                    <span class="komentar-tgl"><?= htmlspecialchars($tgl) ?></span>
+                                    <?php if ($jam): ?>
+                                        <span class="komentar-jam"><?= htmlspecialchars($jam) ?></span>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <div class="komentar-actions">
                                 <button type="button" class="btn-action btn-reply" onclick="setReplyTo('<?= htmlspecialchars($k['id']) ?>', '<?= addslashes(htmlspecialchars($k['nama'])) ?>', this)">Balas</button>
                                 <?php if (isset($k['id'])): ?>
-                                    <form method="POST" action="<?= $room !== 'default' ? '?room=' . urlencode($room) : '' ?>" style="display:inline;" onsubmit="return konfirmasiHapus(this)">
+                                    <form method="POST" action="<?= $room !== 'default' ? '?room=' . urlencode($room) : '' ?>" class="form-delete-inline" onsubmit="return konfirmasiHapus(this)">
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="id" value="<?= htmlspecialchars($k['id']) ?>">
                                         <input type="hidden" name="user_token" class="delete-user-token" value="">
