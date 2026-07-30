@@ -28,7 +28,7 @@ function loadKomentar(string $file): array {
     $data = json_decode($raw, true);
     if (!is_array($data)) return [];
 
-    // Migrasi otomatis data lama yang belum punya ID
+    // Migrasi otomatis data lama (ID, parent_id, dan format timestamp UTC)
     $updated = false;
     foreach ($data as $idx => &$item) {
         if (!isset($item['id']) || empty($item['id'])) {
@@ -38,6 +38,14 @@ function loadKomentar(string $file): array {
         if (!array_key_exists('parent_id', $item)) {
             $item['parent_id'] = null;
             $updated = true;
+        }
+        // Migrasi format timestamp lama "YYYY-MM-DD HH:II:SS" -> "YYYY-MM-DDTHH:II:SSZ" (ISO 8601 UTC)
+        if (isset($item['waktu']) && !str_contains($item['waktu'], 'T')) {
+            $ts = strtotime($item['waktu']);
+            if ($ts !== false) {
+                $item['waktu'] = gmdate('Y-m-d\TH:i:s\Z', $ts);
+                $updated = true;
+            }
         }
     }
     unset($item);
