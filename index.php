@@ -271,8 +271,7 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
         /* Sub-komentar (Balasan menjorok / indented tree) */
         .komentar-children {
             margin-left: 1.1rem;
-            padding-left: 1rem;
-            border-left: 2px solid var(--tree-line);
+            padding-left: 1.1rem;
             display: flex;
             flex-direction: column;
             gap: 0.65rem;
@@ -280,15 +279,34 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             position: relative;
         }
 
-        /* Garis siku vertikal-horizontal penghubung langsung ke child */
+        /* Garis siku horizontal penghubung ke kartu anak */
         .komentar-children > .komentar-branch::before {
             content: "";
             position: absolute;
             top: 1.25rem;
-            left: -1rem;
-            width: 0.95rem;
+            left: -1.1rem;
+            width: 1.1rem;
             height: 2px;
             background-color: var(--tree-line);
+            z-index: 1;
+        }
+
+        /* Garis vertikal pembuka dari atas */
+        .komentar-children > .komentar-branch::after {
+            content: "";
+            position: absolute;
+            top: -0.5rem;
+            bottom: -0.65rem;
+            left: -1.1rem;
+            width: 2px;
+            background-color: var(--tree-line);
+            z-index: 0;
+        }
+
+        /* Potong garis vertikal pada balasan terakhir agar TIDAK tembus mentok ke bawah */
+        .komentar-children > .komentar-branch:last-child::after {
+            bottom: auto;
+            height: 1.8rem;
         }
 
         .komentar-item {
@@ -526,11 +544,14 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             }
             .komentar-children {
                 margin-left: 0.65rem;
-                padding-left: 0.6rem;
+                padding-left: 0.65rem;
             }
             .komentar-children > .komentar-branch::before {
-                left: -0.6rem;
-                width: 0.55rem;
+                left: -0.65rem;
+                width: 0.65rem;
+            }
+            .komentar-children > .komentar-branch::after {
+                left: -0.65rem;
             }
             .komentar-item {
                 padding: 0.65rem 0.75rem;
