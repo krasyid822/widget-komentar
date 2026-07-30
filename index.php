@@ -355,19 +355,9 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             white-space: nowrap;
         }
 
-        .btn-action.btn-delete {
-            color: var(--error);
-            opacity: 0.85;
-        }
-
         .btn-action:hover {
             color: var(--text);
             background: rgba(255, 255, 255, 0.05);
-        }
-
-        .btn-action.btn-delete:hover {
-            color: var(--error);
-            background: rgba(255, 107, 107, 0.1);
         }
 
         .komentar-isi {
