@@ -331,7 +331,7 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             justify-content: space-between;
             gap: 0.5rem;
             margin-bottom: 0.4rem;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
         }
 
         .komentar-meta-left {
@@ -340,6 +340,7 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             gap: 0.4rem;
             flex-wrap: wrap;
             min-width: 0;
+            flex: 1;
         }
 
         .komentar-nama {
@@ -349,15 +350,15 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             word-break: break-word;
         }
 
-        /* Tanggal & Jam responsif sesuai ruang horizontal */
+        /* Tanggal & Jam responsif independen di area kiri */
         .komentar-waktu-box {
             display: inline-flex;
             flex-wrap: wrap;
             align-items: center;
             row-gap: 0.1rem;
             column-gap: 0.25rem;
-            line-height: 1.25;
-            font-size: 0.72rem;
+            line-height: 1.2;
+            font-size: 0.7rem;
             color: var(--text-muted);
             opacity: 0.85;
         }
@@ -366,12 +367,14 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             white-space: nowrap;
         }
 
+        /* Tombol Balas & Hapus terkunci di kanan atas */
         .komentar-actions {
             display: inline-flex;
             align-items: center;
             gap: 0.3rem;
             flex-shrink: 0;
             margin-left: auto;
+            align-self: flex-start;
         }
 
         .form-delete-inline {
