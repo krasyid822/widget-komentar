@@ -546,6 +546,101 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             transition: width 0.4s ease, background 0.4s ease;
         }
 
+        /* --- Custom Confirmation Modal --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(3px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            padding: 1rem;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            max-width: 400px;
+            width: 100%;
+            padding: 1.35rem 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.active .modal-box {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+            margin-bottom: 1.25rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.6rem;
+        }
+
+        .btn-modal-cancel {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.825rem;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-modal-cancel:hover {
+            background: var(--border);
+        }
+
+        .btn-modal-confirm {
+            background: var(--error);
+            color: #fff;
+            border: none;
+            font-family: inherit;
+            font-size: 0.825rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-modal-confirm:hover {
+            opacity: 0.9;
+        }
+
         /* --- Mobile Responsive Adjustment --- */
         @media (max-width: 480px) {
             body {
@@ -689,7 +784,21 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
     </div>
 </div>
 
+<!-- Custom Confirm Modal Overlay -->
+<div class="modal-overlay" id="confirm-modal-overlay">
+    <div class="modal-box">
+        <div class="modal-title">Hapus Komentar?</div>
+        <div class="modal-desc">Komentar ini beserta seluruh balasan di bawahnya akan dihapus secara permanen.</div>
+        <div class="modal-actions">
+            <button type="button" class="btn-modal-cancel" onclick="closeConfirmModal()">Batal</button>
+            <button type="button" class="btn-modal-confirm" id="btn-modal-confirm">Hapus</button>
+        </div>
+    </div>
+</div>
+
 <script>
+    let pendingDeleteId = null;
+
     // Inisialisasi User Token Unik Per Browser Profil
     function getUserToken() {
         let token = localStorage.getItem('comment_user_token');
@@ -783,14 +892,31 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
         }
     });
 
-    // Trigger Hapus via Form Global Tersembunyi
+    // Custom Confirmation Modal Functions
     function triggerHapus(id) {
-        if (confirm('Yakin ingin menghapus komentar ini beserta alasannya?')) {
-            document.getElementById('delete-global-id').value = id;
+        pendingDeleteId = id;
+        document.getElementById('confirm-modal-overlay').classList.add('active');
+    }
+
+    function closeConfirmModal() {
+        pendingDeleteId = null;
+        document.getElementById('confirm-modal-overlay').classList.remove('active');
+    }
+
+    document.getElementById('btn-modal-confirm').addEventListener('click', function() {
+        if (pendingDeleteId) {
+            document.getElementById('delete-global-id').value = pendingDeleteId;
             document.getElementById('delete-global-user-token').value = userToken;
             document.getElementById('form-delete-global').submit();
         }
-    }
+    });
+
+    // Close modal when clicking overlay background
+    document.getElementById('confirm-modal-overlay').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeConfirmModal();
+        }
+    });
 </script>
 
 </body>
