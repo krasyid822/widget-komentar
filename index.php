@@ -46,19 +46,55 @@ $komentar = loadKomentar($dataFile);
 $pesan = '';
 $tipepesan = '';
 
-// --- POST: tambah komentar ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// --- POST: Hapus komentar ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
+    $deleteId = $_POST['id'] ?? '';
+    $userToken = $_POST['user_token'] ?? '';
+
+    if (!empty($deleteId) && !empty($userToken)) {
+        $foundIndex = null;
+        foreach ($komentar as $idx => $k) {
+            if (isset($k['id']) && $k['id'] === $deleteId) {
+                // Periksa apakah user_token komentar cocok dengan browser penyerah
+                if (isset($k['user_token']) && $k['user_token'] === $userToken) {
+                    $foundIndex = $idx;
+                }
+                break;
+            }
+        }
+
+        if ($foundIndex !== null) {
+            array_splice($komentar, $foundIndex, 1);
+            saveKomentar($dataFile, $komentar);
+            $pesan = 'Komentar berhasil dihapus.';
+            $tipepesan = 'sukses';
+        } else {
+            $pesan = 'Tidak dapat menghapus komentar (bukan pemilik atau komentar tidak ditemukan).';
+            $tipepesan = 'error';
+        }
+    }
+    
+    $redirectRoom = $room !== 'default' ? '?room=' . urlencode($room) : '';
+    header('Location: ' . $redirectRoom . '#komentar-list');
+    exit;
+}
+
+// --- POST: Tambah komentar ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST['action'] === 'add')) {
     $nama = trim(htmlspecialchars($_POST['nama'] ?? '', ENT_QUOTES, 'UTF-8'));
     $isi  = trim(htmlspecialchars($_POST['komentar'] ?? '', ENT_QUOTES, 'UTF-8'));
+    $userToken = trim($_POST['user_token'] ?? '');
 
     if ($nama === '' || $isi === '') {
         $pesan = 'Nama dan komentar tidak boleh kosong.';
         $tipepesan = 'error';
     } else {
         $entry = [
-            'nama'   => $nama,
-            'isi'    => $isi,
-            'waktu'  => date('Y-m-d H:i:s'),
+            'id'         => uniqid('k_', true),
+            'nama'       => $nama,
+            'isi'        => $isi,
+            'waktu'      => date('Y-m-d H:i:s'),
+            'user_token' => $userToken,
         ];
         $komentar[] = $entry;
         purgeIfNeeded($dataFile, $komentar, $storLimitBytes);
@@ -172,6 +208,7 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             border-radius: 8px;
             padding: 0.9rem 1rem;
             animation: fadeIn 0.25s ease;
+            position: relative;
         }
 
         @keyframes fadeIn {
@@ -182,8 +219,14 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
         .komentar-meta {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            justify-content: space-between;
             margin-bottom: 0.4rem;
+        }
+
+        .komentar-meta-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .komentar-nama {
@@ -195,6 +238,34 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
         .komentar-waktu {
             font-size: 0.75rem;
             color: var(--text-muted);
+        }
+
+        .komentar-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .btn-action {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 0.1rem 0.3rem;
+            border-radius: 4px;
+            transition: color 0.2s, background 0.2s;
+        }
+
+        .btn-action:hover {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-action.btn-delete:hover {
+            color: var(--error);
+            background: rgba(255, 107, 107, 0.1);
         }
 
         .komentar-isi {
@@ -353,10 +424,23 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             <?php else: ?>
                 <div class="komentar-list">
                     <?php foreach (array_reverse($komentar) as $k): ?>
-                        <div class="komentar-item">
+                        <div class="komentar-item" data-id="<?= htmlspecialchars($k['id'] ?? '') ?>">
                             <div class="komentar-meta">
-                                <span class="komentar-nama"><?= $k['nama'] ?></span>
-                                <span class="komentar-waktu">· <?= $k['waktu'] ?></span>
+                                <div class="komentar-meta-left">
+                                    <span class="komentar-nama"><?= $k['nama'] ?></span>
+                                    <span class="komentar-waktu">· <?= $k['waktu'] ?></span>
+                                </div>
+                                <div class="komentar-actions">
+                                    <button type="button" class="btn-action btn-reply" onclick="balasKomentar('<?= addslashes(htmlspecialchars($k['nama'])) ?>')">Balas</button>
+                                    <?php if (isset($k['id'])): ?>
+                                        <form method="POST" action="<?= $room !== 'default' ? '?room=' . urlencode($room) : '' ?>" style="display:inline;" onsubmit="return konfirmasiHapus(this)">
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="id" value="<?= htmlspecialchars($k['id']) ?>">
+                                            <input type="hidden" name="user_token" class="delete-user-token" value="">
+                                            <button type="submit" class="btn-action btn-delete" data-token="<?= htmlspecialchars($k['user_token'] ?? '') ?>" style="display:none;">Hapus</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <div class="komentar-isi"><?= $k['isi'] ?></div>
                         </div>
@@ -366,7 +450,9 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
         </div>
 
         <!-- Form kirim komentar -->
-        <form method="POST" action="<?= $room !== 'default' ? '?room=' . urlencode($room) : '' ?>">
+        <form method="POST" id="form-komentar" action="<?= $room !== 'default' ? '?room=' . urlencode($room) : '' ?>">
+            <input type="hidden" name="action" value="add">
+            <input type="hidden" name="user_token" id="form-user-token" value="">
             <div class="form-group">
                 <label for="nama">Nama</label>
                 <input type="text" id="nama" name="nama" placeholder="Nama kamu..." maxlength="80" required
@@ -398,6 +484,49 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
 
     </div>
 </div>
+
+<script>
+    // Inisialisasi User Token Unik Per Browser Profil
+    function getUserToken() {
+        let token = localStorage.getItem('comment_user_token');
+        if (!token) {
+            token = 'u_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+            localStorage.setItem('comment_user_token', token);
+        }
+        return token;
+    }
+
+    const userToken = getUserToken();
+    document.getElementById('form-user-token').value = userToken;
+
+    // Tampilkan tombol hapus HANYA jika token di komentar sesuai token browser saat ini
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+        const tokenKomentar = btn.getAttribute('data-token');
+        if (tokenKomentar && tokenKomentar === userToken) {
+            btn.style.display = 'inline-block';
+        }
+    });
+
+    // Balas Komentar
+    function balasKomentar(nama) {
+        const textarea = document.getElementById('komentar');
+        const mention = '@' + nama + ' ';
+        if (!textarea.value.includes(mention)) {
+            textarea.value = mention + textarea.value;
+        }
+        textarea.focus();
+        textarea.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Konfirmasi Hapus & Set User Token
+    function konfirmasiHapus(form) {
+        if (confirm('Yakin ingin menghapus komentar ini?')) {
+            form.querySelector('.delete-user-token').value = userToken;
+            return true;
+        }
+        return false;
+    }
+</script>
 
 </body>
 </html>
