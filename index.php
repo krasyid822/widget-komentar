@@ -333,27 +333,11 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             padding: 0.5rem 0;
         }
 
-        /* --- Indicator Mode Balas --- */
-        .reply-target-box {
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            background: rgba(77, 166, 255, 0.1);
-            border: 1px dashed var(--accent);
-            border-radius: 6px;
-            padding: 0.4rem 0.8rem;
-            font-size: 0.78rem;
-            color: var(--accent);
-            margin-bottom: 0.75rem;
-        }
-
-        .reply-target-box button {
-            background: none;
-            border: none;
-            color: var(--error);
-            font-size: 0.75rem;
-            cursor: pointer;
-            font-weight: 600;
+        /* --- Indikator Komentar Aktif Yang Sedang Dibalas --- */
+        .komentar-item.active-reply {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(77, 166, 255, 0.2);
+            background: rgba(77, 166, 255, 0.05);
         }
 
         /* --- Pesan notif --- */
@@ -546,11 +530,6 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             <input type="hidden" name="user_token" id="form-user-token" value="">
             <input type="hidden" name="parent_id" id="form-parent-id" value="">
 
-            <div class="reply-target-box" id="reply-target-box">
-                <span>Membalas <strong id="reply-target-nama"></strong></span>
-                <button type="button" onclick="batalBalas()">Batal Balas</button>
-            </div>
-
             <div class="form-group">
                 <label for="nama">Nama</label>
                 <input type="text" id="nama" name="nama" placeholder="Nama kamu..." maxlength="80" required
@@ -609,9 +588,12 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
     function setReplyTo(id, nama, btn) {
         const currentParent = document.getElementById('form-parent-id').value;
 
-        // Reset semua tombol reply ke 'Balas'
+        // Reset semua tombol reply ke 'Balas' dan hapus kelas active-reply
         document.querySelectorAll('.btn-reply').forEach(b => {
             b.innerText = 'Balas';
+        });
+        document.querySelectorAll('.komentar-item').forEach(el => {
+            el.classList.remove('active-reply');
         });
 
         // Jika mengklik komentar yang sedang dalam status dibalas, batalkan
@@ -621,10 +603,12 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
         }
 
         document.getElementById('form-parent-id').value = id;
-        document.getElementById('reply-target-nama').innerText = nama;
-        document.getElementById('reply-target-box').style.display = 'flex';
         document.getElementById('btn-submit').innerText = 'Kirim Balasan';
-        if (btn) btn.innerText = 'Batal Balas';
+        if (btn) {
+            btn.innerText = 'Batal Balas';
+            const item = btn.closest('.komentar-item');
+            if (item) item.classList.add('active-reply');
+        }
 
         const textarea = document.getElementById('komentar');
         textarea.focus();
@@ -633,10 +617,12 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
 
     function batalBalas() {
         document.getElementById('form-parent-id').value = '';
-        document.getElementById('reply-target-box').style.display = 'none';
         document.getElementById('btn-submit').innerText = 'Kirim Komentar';
         document.querySelectorAll('.btn-reply').forEach(b => {
             b.innerText = 'Balas';
+        });
+        document.querySelectorAll('.komentar-item').forEach(el => {
+            el.classList.remove('active-reply');
         });
     }
 
