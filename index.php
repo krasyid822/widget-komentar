@@ -375,12 +375,18 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             display: inline-flex;
             margin: 0;
             padding: 0;
+            background: transparent !important;
+            border: none !important;
         }
 
         .btn-action {
-            background: none;
-            border: none;
-            box-shadow: none;
+            background: transparent !important;
+            background-color: transparent !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            -webkit-appearance: none;
+            appearance: none;
             color: var(--text-muted);
             font-size: 0.75rem;
             font-weight: 500;
@@ -393,7 +399,7 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
 
         .btn-action:hover {
             color: var(--text);
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.05) !important;
         }
 
         .komentar-isi {
