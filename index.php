@@ -1,4 +1,5 @@
 <?php
+opcache_reset();
 // ============================
 // WIDGET KOMENTAR — index.php
 // ============================
@@ -20,7 +21,7 @@ if ($room === '') $room = 'default';
 $dataDir = __DIR__ . '/data';
 if (!is_dir($dataDir)) mkdir($dataDir, 0755, true);
 $dataFile = $dataDir . '/' . $room . '.json';
-
+opcache_reset();
 // --- Load komentar ---
 function loadKomentar(string $file): array {
     if (!file_exists($file)) return [];
@@ -480,7 +481,7 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
 
 <div class="widget">
     <div class="widget-header">
-        <h1>Komentar<?= $roomLabel ?></h1>
+        <h1>Komentar</h1>
         <span class="badge"><?= $jumlah ?></span>
     </div>
 
@@ -503,7 +504,7 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
                                 <span class="komentar-waktu">· <?= htmlspecialchars($k['waktu']) ?></span>
                             </div>
                             <div class="komentar-actions">
-                                <button type="button" class="btn-action btn-reply" onclick="setReplyTo('<?= htmlspecialchars($k['id']) ?>', '<?= addslashes(htmlspecialchars($k['nama'])) ?>')">Balas</button>
+                                <button type="button" class="btn-action btn-reply" onclick="setReplyTo('<?= htmlspecialchars($k['id']) ?>', '<?= addslashes(htmlspecialchars($k['nama'])) ?>', this)">Balas</button>
                                 <?php if (isset($k['id'])): ?>
                                     <form method="POST" action="<?= $room !== 'default' ? '?room=' . urlencode($room) : '' ?>" style="display:inline;" onsubmit="return konfirmasiHapus(this)">
                                         <input type="hidden" name="action" value="delete">
@@ -565,7 +566,7 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
         <?php if ($room !== 'default'): ?>
             <div class="room-info">
                 Room: <code><?= htmlspecialchars($room) ?></code>
-                · <a href="?" style="color: var(--text-muted); font-size: 0.78rem;">Kembali ke default</a>
+                · <a href="?" style="color: var(--text-muted); font-size: 0.78rem;">Room Global</a>
             </div>
         <?php endif; ?>
 
@@ -605,11 +606,25 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
     });
 
     // Set Mode Balas (Nested Tree)
-    function setReplyTo(id, nama) {
+    function setReplyTo(id, nama, btn) {
+        const currentParent = document.getElementById('form-parent-id').value;
+
+        // Reset semua tombol reply ke 'Balas'
+        document.querySelectorAll('.btn-reply').forEach(b => {
+            b.innerText = 'Balas';
+        });
+
+        // Jika mengklik komentar yang sedang dalam status dibalas, batalkan
+        if (currentParent === id) {
+            batalBalas();
+            return;
+        }
+
         document.getElementById('form-parent-id').value = id;
         document.getElementById('reply-target-nama').innerText = nama;
         document.getElementById('reply-target-box').style.display = 'flex';
         document.getElementById('btn-submit').innerText = 'Kirim Balasan';
+        if (btn) btn.innerText = 'Batal Balas';
 
         const textarea = document.getElementById('komentar');
         textarea.focus();
@@ -620,6 +635,9 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
         document.getElementById('form-parent-id').value = '';
         document.getElementById('reply-target-box').style.display = 'none';
         document.getElementById('btn-submit').innerText = 'Kirim Komentar';
+        document.querySelectorAll('.btn-reply').forEach(b => {
+            b.innerText = 'Balas';
+        });
     }
 
     // Konfirmasi Hapus & Set User Token
