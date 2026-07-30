@@ -40,3 +40,15 @@ Tambahkan secrets berikut di **Settings → Secrets → Actions**:
 | `/` | Room default |
 | `/?room=diskusi` | Room bernama "diskusi" |
 | `/?room=feedback` | Room bernama "feedback" |
+
+## GitHub Secrets
+
+Di sini:
+
+https://github.com/krasyid822/widget-komentar/settings/secrets/actions
+
+Atau navigasi manual:
+
+Repo → Settings → Secrets and variables → Actions
+
+Di sana bisa tambah, edit, atau hapus secrets FTP_HOST, FTP_UNAME, dan FTP_PW.
