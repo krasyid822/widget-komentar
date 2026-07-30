@@ -26,7 +26,27 @@ function loadKomentar(string $file): array {
     if (!file_exists($file)) return [];
     $raw = file_get_contents($file);
     $data = json_decode($raw, true);
-    return is_array($data) ? $data : [];
+    if (!is_array($data)) return [];
+
+    // Migrasi otomatis data lama yang belum punya ID
+    $updated = false;
+    foreach ($data as $idx => &$item) {
+        if (!isset($item['id']) || empty($item['id'])) {
+            $item['id'] = 'k_legacy_' . $idx . '_' . substr(md5($item['waktu'] ?? $idx), 0, 8);
+            $updated = true;
+        }
+        if (!array_key_exists('parent_id', $item)) {
+            $item['parent_id'] = null;
+            $updated = true;
+        }
+    }
+    unset($item);
+
+    if ($updated) {
+        saveKomentar($file, $data);
+    }
+
+    return $data;
 }
 
 function saveKomentar(string $file, array $data): void {
@@ -126,8 +146,9 @@ function buildTree(array $items, $parentId = null): array {
     foreach ($items as $item) {
         $itemParent = $item['parent_id'] ?? null;
         if ($itemParent === $parentId) {
-            $children = buildTree($items, $item['id']);
-            if ($children) {
+            $itemId = $item['id'] ?? null;
+            if ($itemId !== null) {
+                $children = buildTree($items, $itemId);
                 $item['children'] = $children;
             } else {
                 $item['children'] = [];
