@@ -75,6 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $jumlah = count($komentar);
 $roomLabel = $room !== 'default' ? ' — ' . htmlspecialchars($room) : '';
+
+// --- Info sisa storage ---
+$currentBytes = file_exists($dataFile) ? filesize($dataFile) : 0;
+$usedPercent  = $storLimitBytes > 0 ? min(100, round($currentBytes / $storLimitBytes * 100)) : 0;
+$sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -290,6 +295,41 @@ $roomLabel = $room !== 'default' ? ' — ' . htmlspecialchars($room) : '';
             font-size: 0.75rem;
             color: var(--accent);
         }
+
+        /* --- Storage info --- */
+        .storage-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 0.85rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .storage-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .storage-bar-wrap {
+            flex: 1;
+            height: 3px;
+            background: var(--surface2);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .storage-bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: var(--accent);
+            transition: width 0.4s ease, background 0.4s ease;
+        }
+
+        .storage-bar-fill.warn  { background: #f5a623; }
+        .storage-bar-fill.full  { background: var(--error); }
     </style>
 </head>
 <body>
@@ -345,6 +385,16 @@ $roomLabel = $room !== 'default' ? ' — ' . htmlspecialchars($room) : '';
                 · <a href="?" style="color: var(--text-muted); font-size: 0.78rem;">Kembali ke default</a>
             </div>
         <?php endif; ?>
+
+        <!-- Storage info -->
+        <div class="storage-info" title="Penyimpanan room ini: <?= $usedPercent ?>% terpakai">
+            <span class="storage-label">Sisa <?= $sisaKB ?> KB</span>
+            <div class="storage-bar-wrap">
+                <div class="storage-bar-fill<?= $usedPercent >= 90 ? ' full' : ($usedPercent >= 70 ? ' warn' : '') ?>"
+                     style="width: <?= $usedPercent ?>%"></div>
+            </div>
+            <span class="storage-label"><?= $usedPercent ?>%</span>
+        </div>
 
     </div>
 </div>
