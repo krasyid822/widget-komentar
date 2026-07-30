@@ -1,5 +1,4 @@
 <?php
-opcache_reset();
 // ============================
 // WIDGET KOMENTAR — index.php
 // ============================
