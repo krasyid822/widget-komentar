@@ -1,5 +1,5 @@
 <?php
-// opcache_reset();
+opcache_reset();
 // ============================
 // WIDGET KOMENTAR — index.php
 // ============================
@@ -21,7 +21,7 @@ if ($room === '') $room = 'default';
 $dataDir = __DIR__ . '/data';
 if (!is_dir($dataDir)) mkdir($dataDir, 0755, true);
 $dataFile = $dataDir . '/' . $room . '.json';
-opcache_reset();
+
 // --- Load komentar ---
 function loadKomentar(string $file): array {
     if (!file_exists($file)) return [];
