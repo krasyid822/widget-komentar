@@ -54,3 +54,7 @@ Atau navigasi manual:
 Repo → Settings → Secrets and variables → Actions
 
 Di sana bisa tambah, edit, atau hapus secrets FTP_HOST, FTP_UNAME, dan FTP_PW.
+
+# Quality Control
+
+php -l <your-code>
