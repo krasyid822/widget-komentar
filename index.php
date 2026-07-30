@@ -609,12 +609,7 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
                             <div class="komentar-actions">
                                 <button type="button" class="btn-action btn-reply" onclick="setReplyTo('<?= htmlspecialchars($k['id']) ?>', '<?= addslashes(htmlspecialchars($k['nama'])) ?>', this)">Balas</button>
                                 <?php if (isset($k['id'])): ?>
-                                    <form method="POST" action="<?= $room !== 'default' ? '?room=' . urlencode($room) : '' ?>" class="form-delete-inline" onsubmit="return konfirmasiHapus(this)">
-                                        <input type="hidden" name="action" value="delete">
-                                        <input type="hidden" name="id" value="<?= htmlspecialchars($k['id']) ?>">
-                                        <input type="hidden" name="user_token" class="delete-user-token" value="">
-                                        <button type="submit" class="btn-action btn-delete" data-token="<?= htmlspecialchars($k['user_token'] ?? '') ?>" style="display:none;">Hapus</button>
-                                    </form>
+                                    <button type="button" class="btn-action btn-delete" data-token="<?= htmlspecialchars($k['user_token'] ?? '') ?>" onclick="triggerHapus('<?= htmlspecialchars($k['id']) ?>')" style="display:none;">Hapus</button>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -677,6 +672,13 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             </div>
             <span class="storage-label"><?= $usedPercent ?>%</span>
         </div>
+
+        <!-- Form Hapus Tersembunyi Global -->
+        <form method="POST" id="form-delete-global" action="<?= $room !== 'default' ? '?room=' . urlencode($room) : '' ?>" style="display:none;">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" id="delete-global-id" value="">
+            <input type="hidden" name="user_token" id="delete-global-user-token" value="">
+        </form>
 
     </div>
 </div>
@@ -775,13 +777,13 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
         }
     });
 
-    // Konfirmasi Hapus & Set User Token
-    function konfirmasiHapus(form) {
+    // Trigger Hapus via Form Global Tersembunyi
+    function triggerHapus(id) {
         if (confirm('Yakin ingin menghapus komentar ini beserta alasannya?')) {
-            form.querySelector('.delete-user-token').value = userToken;
-            return true;
+            document.getElementById('delete-global-id').value = id;
+            document.getElementById('delete-global-user-token').value = userToken;
+            document.getElementById('form-delete-global').submit();
         }
-        return false;
     }
 </script>
 
