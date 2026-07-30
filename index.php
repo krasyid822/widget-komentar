@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['action']) || $_POST
             'parent_id'  => $parentId !== '' ? $parentId : null,
             'nama'       => $nama,
             'isi'        => $isi,
-            'waktu'      => date('Y-m-d H:i:s'),
+            'waktu'      => gmdate('Y-m-d\TH:i:s\Z'),
             'user_token' => $userToken,
         ];
         $komentar[] = $entry;
@@ -552,15 +552,19 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
                                 <span class="komentar-nama"><?= htmlspecialchars($k['nama']) ?></span>
                                 <?php
                                     $waktuRaw = $k['waktu'] ?? '';
-                                    $parts = explode(' ', $waktuRaw, 2);
-                                    $tgl = $parts[0] ?? '';
-                                    $jam = $parts[1] ?? '';
+                                    // Fallback jika format lama (bukan ISO T/Z)
+                                    if (!str_contains($waktuRaw, 'T')) {
+                                        $parts = explode(' ', $waktuRaw, 2);
+                                        $tglFallback = $parts[0] ?? '';
+                                        $jamFallback = $parts[1] ?? '';
+                                    } else {
+                                        $tglFallback = '';
+                                        $jamFallback = '';
+                                    }
                                 ?>
-                                <div class="komentar-waktu-box">
-                                    <span class="komentar-tgl"><?= htmlspecialchars($tgl) ?></span>
-                                    <?php if ($jam): ?>
-                                        <span class="komentar-jam"><?= htmlspecialchars($jam) ?></span>
-                                    <?php endif; ?>
+                                <div class="komentar-waktu-box" data-utc="<?= htmlspecialchars($waktuRaw) ?>">
+                                    <span class="komentar-tgl"><?= htmlspecialchars($tglFallback) ?></span>
+                                    <span class="komentar-jam"><?= htmlspecialchars($jamFallback) ?></span>
                                 </div>
                             </div>
                             <div class="komentar-actions">
@@ -701,6 +705,36 @@ $sisaKB       = max(0, round(($storLimitBytes - $currentBytes) / 1024, 1));
             el.classList.remove('active-reply');
         });
     }
+
+    // Format waktu UTC ke zona waktu lokal pengguna
+    document.querySelectorAll('.komentar-waktu-box').forEach(box => {
+        const utcStr = box.getAttribute('data-utc');
+        if (!utcStr) return;
+        
+        let dateObj;
+        if (utcStr.includes('T')) {
+            dateObj = new Date(utcStr);
+        } else {
+            // Untuk data lama tanpa T/Z (format Y-m-d H:i:s)
+            dateObj = new Date(utcStr.replace(' ', 'T') + 'Z');
+        }
+
+        if (!isNaN(dateObj.getTime())) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            
+            const hours = String(dateObj.getHours()).padStart(2, '0');
+            const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+            const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+
+            const tglEl = box.querySelector('.komentar-tgl');
+            const jamEl = box.querySelector('.komentar-jam');
+            
+            if (tglEl) tglEl.innerText = `${year}-${month}-${day}`;
+            if (jamEl) jamEl.innerText = `${hours}:${minutes}:${seconds}`;
+        }
+    });
 
     // Konfirmasi Hapus & Set User Token
     function konfirmasiHapus(form) {
