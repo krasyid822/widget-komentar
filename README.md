@@ -41,6 +41,8 @@ Tambahkan secrets berikut di **Settings → Secrets → Actions**:
 | `/?room=diskusi` | Room bernama "diskusi" |
 | `/?room=feedback` | Room bernama "feedback" |
 
+https://komen.site.je/index.php?room=a
+
 ## GitHub Secrets
 
 Di sini:
