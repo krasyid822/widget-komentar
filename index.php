@@ -50,6 +50,16 @@ function loadKomentar(string $file): array {
     }
     unset($item);
 
+    // Cleanup otomatis untuk komentar "yatim" yang parent_id-nya sudah terhapus
+    $existingIds = array_filter(array_column($data, 'id'));
+    foreach ($data as &$item) {
+        if (!empty($item['parent_id']) && !in_array($item['parent_id'], $existingIds, true)) {
+            $item['parent_id'] = null; // Angkat menjadi komentar utama jika induknya hilang
+            $updated = true;
+        }
+    }
+    unset($item);
+
     if ($updated) {
         saveKomentar($file, $data);
     }
@@ -74,24 +84,43 @@ $komentar = loadKomentar($dataFile);
 $pesan = '';
 $tipepesan = '';
 
-// --- Helper fungsi untuk menghapus komentar dan anak-anaknya secara rekursif ---
+// --- Helper fungsi untuk mengumpulkan seluruh ID anak, cucu, cicit secara rekursif ---
+function getDescendantIds(array $list, string $parentId): array {
+    $ids = [];
+    foreach ($list as $item) {
+        if (isset($item['parent_id']) && $item['parent_id'] === $parentId) {
+            $ids[] = $item['id'];
+            $ids = array_merge($ids, getDescendantIds($list, $item['id']));
+        }
+    }
+    return $ids;
+}
+
+// --- Helper fungsi untuk menghapus komentar beserta seluruh keturunannya ---
 function deleteKomentarRecursive(array &$list, string $targetId, string $userToken): bool {
-    $found = false;
+    $targetIndex = null;
     foreach ($list as $idx => $k) {
         if (isset($k['id']) && $k['id'] === $targetId) {
             if (isset($k['user_token']) && $k['user_token'] === $userToken) {
-                // Hapus komentar beserta balasan-balasannya
-                array_splice($list, $idx, 1);
-                // Juga hapus segenap komentar yang memiliki parent_id = targetId
-                $list = array_values(array_filter($list, function($item) use ($targetId) {
-                    return ($item['parent_id'] ?? null) !== $targetId;
-                }));
-                return true;
+                $targetIndex = $idx;
             }
-            return false;
+            break;
         }
     }
-    return false;
+
+    if ($targetIndex === null) {
+        return false;
+    }
+
+    // Kumpulkan ID target + seluruh ID keturunannya (anak, cucu, cicit, dst)
+    $toDeleteIds = array_merge([$targetId], getDescendantIds($list, $targetId));
+
+    // Filter array list untuk menghapus semua item yang ID-nya ada dalam daftar toDeleteIds
+    $list = array_values(array_filter($list, function($item) use ($toDeleteIds) {
+        return !in_array($item['id'] ?? '', $toDeleteIds, true);
+    }));
+
+    return true;
 }
 
 // --- POST: Hapus komentar ---
